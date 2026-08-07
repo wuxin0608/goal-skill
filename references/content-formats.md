@@ -1,6 +1,6 @@
 # 文案类型输出格式（Agent 写稿真源）
 
-**写稿前必须按任务 `content_type_config[].type`（即 `content_type`）打开对应小节，严格按格式写 `piece-create` 的 `result`。**
+**适用于 `output_type` 为 `piece_*` 的任务。** 写稿前：将 kind 去掉 `piece_` 前缀得到 `content_type`（或读 `content_type_config[].type`），打开下方对应章节，严格按格式写 `piece-create` 的 `result`。
 
 `result` 只能是可直接复制粘贴到目标渠道的**成品正文**，不是创作过程、SOP、场景剧本、分析复盘或多版本备选。
 

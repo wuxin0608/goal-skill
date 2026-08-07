@@ -1,7 +1,7 @@
 ---
 name: goal-skill
 description: goal-skill / 内容运营：按 Web 复制的 taskId= / projectId= 或今日 due 拉取任务并本地写稿回写；维护资料与选题；设备笔记发布；固定目标下 goal-diverge 写候选菜单。Use when user says 用 goal-skill 执行任务 taskId=… or 依次执行任务 taskId=… or 拉取并执行今日到期任务 or 用 goal-skill 对本项目发散 goal projectId=…. NEVER trigger backend LLM generation.
-version: 3.3.0
+version: 3.4.0
 author: custom
 type: automation
 permissions:
@@ -30,7 +30,9 @@ output_schema:
 
 **Web 只提交任务与调度配置；选题匹配与写稿一律由本地 Agent + 本 Skill 完成。后端只做存储与状态机，不调用任何模型。**
 
-**`piece-create` 的 `result` = 渠道成品正文**（可直接复制粘贴发布/发送），不是创作过程、SOP、场景剧本、分析复盘或多版本备选。各类型输出格式真源见 [`references/content-formats.md`](references/content-formats.md)。
+**产物用扁平 `output_type`（artifact kind）**：`piece_*` / `file_*` / `topic` / `photo` / `template` / `subgoal`。列表见 [`references/artifact-kinds.md`](references/artifact-kinds.md)。
+
+**`piece-create` 的 `result` = 渠道成品正文**（可直接复制粘贴发布/发送）。`piece_*` 对应的渠道格式见 [`references/content-formats.md`](references/content-formats.md)（章节名为去掉 `piece_` 后的 content_type）。
 
 **固定目标发散：只根据 Goal + 资料/选题生成候选；禁止根据赞藏评论等 metrics 改目标或选题。** 候选字段见 [`references/goal-diverge.md`](references/goal-diverge.md)。
 
@@ -56,10 +58,10 @@ Web「复制执行提示词」只会给出极短文本，形态固定为 **空�
 
 **工作流细节由本 Skill 内置，不必写在提示词里。**
 
-- ✅ 收到 `taskId` → `content-task-get` → `claim` → 写稿 → `piece-create` → `finish`
-- ✅ 或 `content-task-due` → **挨个** claim / 写稿 / finish
-- ✅ 任务无选题时：`topic-list` 按 brief.goal 本地匹配后再写
-- ✅ 发散：`project-goal-get` →（可选 trigger）→ 本地生成 candidates → `goal-diverge-finish`
+- ✅ 收到 `taskId` → `content-task-get` → `claim` → **按 output_type 族回写** → `finish`
+- ✅ 或 `content-task-due` → **挨个** claim / 回写 / finish
+- ✅ `piece_*` 无选题时：`topic-list` 按 brief.goal 本地匹配后再写
+- ✅ 发散：candidates 使用扁平 kind → `goal-diverge-finish`
 - ❌ **禁止** `content-task-confirm`（会触发后端 LLM）
 - ❌ **禁止**任何后端 generate / 云端写稿接口
 - ❌ **禁止**根据 metrics / 赞藏改 Goal 或选题
@@ -79,14 +81,22 @@ Web「复制执行提示词」只会给出极短文本，形态固定为 **空�
 对每个 `taskId`：
 
 1. 若提示词含 `projectId`：`project-use`
-2. `content-task-get`（`taskId`）读 brief / topics / `content_type_config` / 项目
+2. `content-task-get`（`taskId`）读 `output_type` / brief / topics / `content_type_config` / 项目
 3. `content-task-claim` → `batch_tag`；若 `claimed=false` 则跳过并说明 reason
-4. 若 topics 为空：`topic-list`，按 brief.goal 本地匹配；`piece-create` 可带 title
-5. 通常**仅一种** `content_type`：按 `piece_count` 本地写稿；有多选题则轮转均分
-6. **写稿前** `Read references/content-formats.md` 中该 `content_type` 小节，严格按格式写 `result`
-7. 每篇 `piece-create`（同一 `batch_tag` + `batch_piece_index` 从 1 起）
-8. `content-task-finish`（带 `batch_tag`）
-9. 提示用户回 Web 工作台**手动刷新**任务列表
+4. 按 **`output_type` 族**分支（见下）；数量用 `expected_piece_count` / `brief.quantity`
+5. `content-task-finish`：`piece_*` 带 `batch_tag`；其它族带 `generated_count` 与可选 `artifact_ids`
+6. 提示用户回 Web 工作台**手动刷新**任务列表
+
+#### 按族回写
+
+| output_type | 动作 |
+|-------------|------|
+| `piece_*` | 去前缀得 content_type；`Read content-formats.md`；topics 空则 `topic-list` 匹配；`piece-create` ×N（同 batch_tag）→ finish |
+| `topic` | `topic-create` ×N → finish（`generated_count` / ids） |
+| `file_md` / `file_txt` / `file_html` | 写内容 → `file-upsert`（扩展名随 kind）→ finish |
+| `photo` | 生图或取本地图 → `photo-create` ×N → finish |
+| `template` | 结构化 `template-upsert` 或链接 `keyword` 导入 → finish |
+| `subgoal` | 通常 Web 已建目标；若仍 queued 可建 goal 后 finish |
 
 ### A. 执行今日到期任务（无 taskId 时）
 
@@ -120,10 +130,10 @@ Web「复制执行提示词」只会给出极短文本，形态固定为 **空�
 2. 解析 `goalId`（必填）；可用 `project-goal-get` / goals list 核对目标
 3. `file-list` + `topic-list` 取事实与现有选题（不要虚构）
 4. 若无 `runId`：`goal-diverge-trigger`（带 `goalId`）→ 得到 `runId`
-5. **本地**按 Goal + 资料/选题生成 6～12 条 candidates（混用 `copy` / `topic` / `subgoal` 等）；**禁止**看 metrics、**禁止**调后端 generate
-6. 写回前 `Read references/goal-diverge.md`
+5. **本地**按 Goal + 资料/选题生成 6～12 条 candidates（扁平 kind：`piece_*` / `topic` / `file_*` / `photo` / `template` / `subgoal`）；**禁止**看 metrics、**禁止**调后端 generate
+6. 写回前 `Read references/goal-diverge.md` 与 `references/artifact-kinds.md`
 7. `goal-diverge-finish`（`run_id` + `candidates`）
-8. 提示用户回 Web「候选菜单」勾选；采纳后的 copy 任务再用 A0 写稿
+8. 提示用户回 Web「候选菜单」勾选；采纳后的任务再用 A0 按族回写
 
 ## 子能力与脚本
 
@@ -136,15 +146,17 @@ Web「复制执行提示词」只会给出极短文本，形态固定为 **空�
 | `goal-diverge-finish` | `scripts/goal-diverge-finish.py` | **回写候选**（Skill key） |
 | `task-candidates-list` | `scripts/task-candidates-list.py` | 候选菜单列表 |
 | `task-candidate-select` | `scripts/task-candidate-select.py` | 采纳/拒绝（可选；通常 Web） |
-| `file-list` / `file-upsert` | 对应脚本 | 项目资料 |
-| `topic-list` / `topic-create` | 对应脚本 | 选题库 |
+| `file-list` / `file-upsert` | 对应脚本 | 项目资料（`file_*` 任务回写） |
+| `topic-list` / `topic-create` | 对应脚本 | 选题库（`topic` 任务回写） |
+| `photo-create` | `scripts/photo-create.py` | 上传/入库项目图库 |
+| `template-upsert` | `scripts/template-upsert.py` | 结构化建模板或链接导入 |
 | `content-task-list` | `scripts/content-task-list.py` | 项目任务列表 |
 | `content-task-due` | `scripts/content-task-due.py` | **到期待执行任务**（仅无 taskId 时用） |
 | `content-task-claim` | `scripts/content-task-claim.py` | **领取执行权 + batch_tag** |
-| `content-task-finish` | `scripts/content-task-finish.py` | **结束本批并回写状态** |
-| `content-task-create` | `scripts/content-task-create.py` | 确认后任务+选题落库 |
+| `content-task-finish` | `scripts/content-task-finish.py` | **结束本批**（piece 用 batch_tag；其它用 generated_count） |
+| `content-task-create` | `scripts/content-task-create.py` | 创建任务（`output_type` 扁平 kind） |
 | `content-task-get` | `scripts/content-task-get.py` | 任务详情（只读） |
-| `piece-create` | `scripts/piece-create.py` | 保存成稿（可带 batch） |
+| `piece-create` | `scripts/piece-create.py` | 保存成稿（`piece_*`） |
 | `piece-list` / `piece-update` | 对应脚本 | 成稿列表/改稿 |
 | `device-list` / `add-task` / … | 对应脚本 | 发布侧 |
 

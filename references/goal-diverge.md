@@ -2,22 +2,26 @@
 
 本地 Agent 根据项目 Goal + 资料/选题生成候选后，经 `goal-diverge-finish` 写入。
 
+完整 kind 列表见 [`artifact-kinds.md`](artifact-kinds.md)。
+
 ## 原则
 
 - **只根据固定 Goal 与现有资料/选题发散**，禁止根据赞、藏、评论等 metrics 改目标或选题。
 - 后端不调用 LLM；发散与写稿均在本地完成。
-- 用户在 Web「候选菜单」勾选后，`copy` 类候选进入现有 claim / piece / finish 写稿链路。
+- 用户在 Web「候选菜单」勾选后，按 `output_type`（扁平 kind）进入对应回写链路。
 
 ## `candidates[]` 字段
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `title` | string | 菜单展示标题 |
-| `output_type` | string | `copy` / `topic` / `subgoal` / `private_script` 等 |
-| `prompt` | string | 执行时 brief 提示（写稿/落选题用） |
+| `output_type` | string | **扁平 kind**：`piece_xiaohongshu` / `file_md` / `topic` / `photo` / `template` / `subgoal` 等 |
+| `prompt` | string | 执行时 brief 提示 |
 | `why` | string | 可选，推荐理由 |
-| `content_types` | string[] | `copy` 时建议带，如 `["xiaohongshu"]` |
+| `quantity` | number | 可选，期望产物数 |
 | `assignee` | string | 默认 `agent`；可 `human` |
+
+**不要**再传 `content_types`（旧两层模型）。若误传 `output_type=copy` + `content_types`，后端会归一成 `piece_*`。
 
 ## 示例
 
@@ -27,16 +31,28 @@
   "candidates": [
     {
       "title": "周末一人食探店",
-      "output_type": "copy",
+      "output_type": "piece_xiaohongshu",
       "prompt": "围绕一人周末探店写小红书，语气轻松",
       "why": "贴合本周小目标",
-      "content_types": ["xiaohongshu"],
+      "quantity": 3,
       "assignee": "agent"
+    },
+    {
+      "title": "拆 5 个周末选题",
+      "output_type": "topic",
+      "prompt": "从资料拆可写选题入库",
+      "quantity": 5
     },
     {
       "title": "本周攻「一个人周末」",
       "output_type": "subgoal",
       "prompt": "建议新增小目标：聚焦一人周末场景"
+    },
+    {
+      "title": "补充竞品结构笔记",
+      "output_type": "file_md",
+      "prompt": "把对标拆解写成 md 资料",
+      "quantity": 1
     }
   ]
 }

@@ -24,6 +24,10 @@ def run(params: Dict[str, Any]) -> Dict[str, Any]:
         ("failed", "failed"),
         ("error", "error"),
         ("message", "error"),
+        ("generated_count", "generated_count"),
+        ("generatedCount", "generated_count"),
+        ("artifact_ids", "artifact_ids"),
+        ("artifactIds", "artifact_ids"),
     ):
         if params.get(src) is not None and dst not in body:
             body[dst] = params[src]
