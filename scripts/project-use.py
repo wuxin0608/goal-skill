@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""project-use：切换 skill 当前项目，并写入 .cache/project.json"""
+"""project-use：校验项目成员身份，并写入本地 .cache/project.json（服务端不存默认项目）"""
 
 from __future__ import annotations
 

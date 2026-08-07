@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared helpers for ainote skill scripts."""
+"""Shared helpers for goal-skill scripts."""
 
 from __future__ import annotations
 
@@ -16,16 +16,16 @@ CACHE_DIR = os.path.join(SKILL_ROOT, ".cache")
 DEVICES_CACHE = os.path.join(CACHE_DIR, "devices.json")
 PROJECT_CACHE = os.path.join(CACHE_DIR, "project.json")
 
-DEFAULT_API_BASE = "https://ai2027.cn/note/web"
-API_BASE = (os.environ.get("AINOTE_API_BASE") or DEFAULT_API_BASE).rstrip("/")
-API_KEY_HEADER = "X-AINOTE-API-KEY"
+DEFAULT_API_BASE = "https://ai2027.cn/goal/web"
+API_BASE = (os.environ.get("AIGOAL_API_BASE") or DEFAULT_API_BASE).rstrip("/")
+API_KEY_HEADER = "X-AIGOAL-API-KEY"
 SUCCESS_CODE = 20000
 
 
 def get_api_key() -> str:
-    key = os.environ.get("AINOTE_API_KEY", "").strip()
+    key = os.environ.get("AIGOAL_API_KEY", "").strip()
     if not key:
-        raise ValueError("缺少 AINOTE_API_KEY，请设置环境变量 AINOTE_API_KEY")
+        raise ValueError("缺少 AIGOAL_API_KEY，请设置环境变量 AIGOAL_API_KEY")
     return key
 
 
@@ -35,6 +35,13 @@ def _check_payload(payload: Dict[str, Any]) -> Any:
         message = payload.get("message") or str(payload)
         raise ValueError(f"API 错误: code={code}, message={message}")
     return payload
+
+
+def _session() -> requests.Session:
+    # 避免系统代理把 localhost / 内网请求打成 502
+    s = requests.Session()
+    s.trust_env = False
+    return s
 
 
 def request_api(
@@ -49,10 +56,11 @@ def request_api(
     url = f"{API_BASE}{path}"
     headers = {API_KEY_HEADER: api_key}
     method_u = method.upper()
+    session = _session()
     if method_u == "GET":
-        response = requests.get(url, params=params or {}, headers=headers, timeout=timeout)
+        response = session.get(url, params=params or {}, headers=headers, timeout=timeout)
     elif method_u == "POST":
-        response = requests.post(
+        response = session.post(
             url,
             json=body if body is not None else {},
             params=params,
@@ -80,7 +88,7 @@ def request_skill_multipart(path: str, task_id: int, file_path: str) -> Any:
 
     url = f"{API_BASE}{path}"
     with open(file_path, "rb") as file_obj:
-        response = requests.post(
+        response = _session().post(
             url,
             data={"taskId": str(task_id)},
             files={"file": (os.path.basename(file_path), file_obj)},

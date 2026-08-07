@@ -49,9 +49,9 @@ Web「复制执行提示词」只会给出极短文本，形态固定为 **空�
 解析规则：
 
 1. 用正则提取 `taskId=` 后的数字；若含逗号（如 `1,2,3`）则拆成多个 id。
-2. 提取可选 `projectId=`；有则先 `project-use`。
+2. 提取 **`projectId=`（多项目用户必填）**；有则先 `project-use`（仅本地缓存当前项目，服务端不存默认项目）。
 3. **有 `taskId` 时禁止再调 `content-task-due`**——Web 已给出要执行的 id。
-4. 无 `taskId` 且出现「今日到期 / due」时，才走 `content-task-due`。
+4. 无 `taskId` 且出现「今日到期 / due」时，才走 `content-task-due`（须带 `projectId`）。
 5. 出现「发散 goal」或 `goal-diverge` 时走流程 D；可提取可选 `runId=`。
 
 **工作流细节由本 Skill 内置，不必写在提示词里。**
@@ -66,11 +66,11 @@ Web「复制执行提示词」只会给出极短文本，形态固定为 **空�
 
 ## 配置
 
-设置环境变量 **`AINOTE_API_KEY`**（`sk-` 前缀）。
+设置环境变量 **`AIGOAL_API_KEY`**（`sk-` 前缀）。
 
 - Key 为用户级固定密钥：Web 端「AI Agent 接入」复制。
-- API 地址：`https://ai2027.cn/note/web`（可用环境变量 `AINOTE_API_BASE` 覆盖）
-- 请求头：`X-AINOTE-API-KEY`（需 VIP）
+- API 地址：`https://ai2027.cn/goal/web`（可用环境变量 `AIGOAL_API_BASE` 覆盖）
+- 请求头：`X-AIGOAL-API-KEY`（需 VIP）
 
 ## 推荐流程
 
@@ -130,7 +130,7 @@ Web「复制执行提示词」只会给出极短文本，形态固定为 **空�
 | 子能力 | 脚本 | 说明 |
 |--------|------|------|
 | `project-list` | `scripts/project-list.py` | 列出可管理项目 |
-| `project-use` | `scripts/project-use.py` | 切换当前项目 |
+| `project-use` | `scripts/project-use.py` | 校验成员身份并缓存本地当前项目（不写服务端默认项目） |
 | `project-goal-get` / `project-goal-update` | 对应脚本 | 读写大目标 |
 | `goal-diverge-trigger` | `scripts/goal-diverge-trigger.py` | 创建 diverge_run |
 | `goal-diverge-finish` | `scripts/goal-diverge-finish.py` | **回写候选**（Skill key） |
@@ -218,7 +218,7 @@ Web「复制执行提示词」只会给出极短文本，形态固定为 **空�
 ## 快速调用
 
 ```bash
-export AINOTE_API_KEY=sk-...
+export AIGOAL_API_KEY=sk-...
 
 # Web 复制「执行任务 taskId=987 projectId=123」时：
 python3 scripts/project-use.py '{"projectId":123}'
