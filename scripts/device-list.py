@@ -5,13 +5,14 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from common import load_devices, request_skill, save_devices
+from common import request_skill, save_devices, with_project_id
 
 
-def run() -> List[Dict[str, Any]]:
-    payload = request_skill("/v1/ainote/skill/device/list", {})
+def run(params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    body = with_project_id(params)
+    payload = request_skill("/v1/ainote/skill/device/list", body)
     raw_list = payload.get("list") or payload.get("data", {}).get("list") or []
     devices: List[Dict[str, Any]] = []
     for item in raw_list:
@@ -26,9 +27,18 @@ def run() -> List[Dict[str, Any]]:
     return devices
 
 
-def main() -> int:
+def main(argv: Optional[List[str]] = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    params: Dict[str, Any] = {}
+    if argv:
+        try:
+            loaded = json.loads(argv[0])
+            if isinstance(loaded, dict):
+                params = loaded
+        except json.JSONDecodeError:
+            pass
     try:
-        devices = run()
+        devices = run(params)
         print(json.dumps({"devices": devices, "cached": True}, ensure_ascii=False))
         return 0
     except Exception as exc:

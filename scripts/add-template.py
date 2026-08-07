@@ -8,7 +8,7 @@ import json
 import sys
 from typing import Any, Dict
 
-from common import request_skill
+from common import request_skill, with_project_id
 
 
 def run(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -16,7 +16,10 @@ def run(params: Dict[str, Any]) -> Dict[str, Any]:
     if not keyword:
         raise ValueError("缺少 keyword")
 
-    payload = request_skill("/v1/ainote/skill/add/template", {"keyword": keyword})
+    payload = request_skill(
+        "/v1/ainote/skill/add/template",
+        with_project_id({"keyword": keyword, **params}),
+    )
     raw_list = payload.get("list") or payload.get("data", {}).get("list") or []
     return {"templateResult": {"list": raw_list, "code": payload.get("code", 20000)}}
 

@@ -7,7 +7,7 @@ import json
 import sys
 from typing import Any, Dict, List, Optional
 
-from common import request_skill, resolve_device_id
+from common import request_skill, resolve_device_id, with_project_id
 
 
 def run(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -17,11 +17,13 @@ def run(params: Dict[str, Any]) -> Dict[str, Any]:
     if not title or not text:
         raise ValueError("缺少 title 或 text")
 
-    body = {
-        "deviceId": device_id,
-        "title": title,
-        "text": text,
-    }
+    body = with_project_id(
+        {
+            "deviceId": device_id,
+            "title": title,
+            "text": text,
+        }
+    )
     payload = request_skill("/v1/ainote/skill/add/task", body)
     task_id = payload.get("data", {}).get("id") or payload.get("id")
     result: Dict[str, Any] = {"noteshareResult": payload}
