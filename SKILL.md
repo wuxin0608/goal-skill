@@ -135,6 +135,8 @@ Web「复制执行提示词」只会给出极短文本，形态固定为 **空�
 7. `goal-diverge-finish`（`run_id` + `candidates`）
 8. 提示用户回 Web「候选菜单」勾选；采纳后的任务再用 A0 按族回写
 
+**`subgoal` 推荐同时带菜单**：candidate 上加 `tasks: [...]`（同字段结构的非 subgoal 项）。finish 会同时创建 `pending_review` 目标 + 挂在其下的候选菜单。也可对已有待审目标直接 trigger/finish 写菜单（`goalId` 可为 `pending_review`）。
+
 ## 子能力与脚本
 
 | 子能力 | 脚本 | 说明 |

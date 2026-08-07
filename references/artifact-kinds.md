@@ -45,4 +45,4 @@
 - `file_*` → `file-upsert` → finish
 - `photo` → `photo-create` ×N → finish
 - `template` → `template-upsert` 或链接 `add-template` → finish
-- `subgoal` → 通常 Web 采纳/创建时已建目标
+- `subgoal` → Web 采纳时建 `pending_review` 目标；发散 finish 时若带 `tasks` 则同时创建目标 + 菜单候选
