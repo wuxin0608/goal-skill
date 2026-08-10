@@ -15,7 +15,7 @@
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `title` | string | 菜单展示标题 |
-| `output_type` | string | **扁平 kind**：`piece_xiaohongshu` / `file_md` / `topic` / `photo` / `template` / `subgoal` 等 |
+| `output_type` | string | **扁平 kind**：`piece_xiaohongshu` / `file_md` / `topic` / `photo` / `template` / `speech` / `subgoal` 等 |
 | `prompt` | string | 执行时 brief 提示 |
 | `why` | string | 可选，推荐理由 |
 | `quantity` | number | 可选，期望产物数 |

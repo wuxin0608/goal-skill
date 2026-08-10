@@ -1,7 +1,7 @@
 ---
 name: goal-skill
 description: goal-skill / 内容运营：按 Web 复制的 taskId= / projectId= 或今日 due 拉取任务并本地写稿回写；维护资料与选题；设备笔记发布；固定目标下 goal-diverge 写候选菜单。Use when user says 用 goal-skill 执行任务 taskId=… or 依次执行任务 taskId=… or 拉取并执行今日到期任务 or 用 goal-skill 对本项目发散 goal projectId=…. NEVER trigger backend LLM generation.
-version: 3.4.0
+version: 3.6.0
 author: custom
 type: automation
 permissions:
@@ -30,7 +30,7 @@ output_schema:
 
 **Web 只提交任务与调度配置；选题匹配与写稿一律由本地 Agent + 本 Skill 完成。后端只做存储与状态机，不调用任何模型。**
 
-**产物用扁平 `output_type`（artifact kind）**：`piece_*` / `file_*` / `topic` / `photo` / `template` / `subgoal`。列表见 [`references/artifact-kinds.md`](references/artifact-kinds.md)。
+**产物用扁平 `output_type`（artifact kind）**：`piece_*` / `file_*` / `topic` / `photo` / `template` / `subgoal` / `speech`。列表见 [`references/artifact-kinds.md`](references/artifact-kinds.md)。
 
 **`piece-create` 的 `result` = 渠道成品正文**（可直接复制粘贴发布/发送）。`piece_*` 对应的渠道格式见 [`references/content-formats.md`](references/content-formats.md)（章节名为去掉 `piece_` 后的 content_type）。
 
@@ -96,6 +96,7 @@ Web「复制执行提示词」只会给出极短文本，形态固定为 **空�
 | `file_md` / `file_txt` / `file_html` | 写内容 → `file-upsert`（扩展名随 kind）→ finish |
 | `photo` | 生图或取本地图 → `photo-create` ×N → finish |
 | `template` | 结构化 `template-upsert` 或链接 `keyword` 导入 → finish |
+| `speech` | 写话术 → `speech-create` ×N（`title` + `copies[]`）→ finish（`generated_count` / ids） |
 | `subgoal` | 通常 Web 已建目标；若仍 queued 可建 goal 后 finish |
 
 ### A. 执行今日到期任务（无 taskId 时）
@@ -130,7 +131,7 @@ Web「复制执行提示词」只会给出极短文本，形态固定为 **空�
 2. 解析 `goalId`（必填）；可用 `project-goal-get` / goals list 核对目标
 3. `file-list` + `topic-list` 取事实与现有选题（不要虚构）
 4. 若无 `runId`：`goal-diverge-trigger`（带 `goalId`）→ 得到 `runId`
-5. **本地**按 Goal + 资料/选题生成 6～12 条 candidates（扁平 kind：`piece_*` / `topic` / `file_*` / `photo` / `template` / `subgoal`）；**禁止**看 metrics、**禁止**调后端 generate
+5. **本地**按 Goal + 资料/选题生成 6～12 条 candidates（扁平 kind：`piece_*` / `topic` / `file_*` / `photo` / `template` / `speech` / `subgoal`）；**禁止**看 metrics、**禁止**调后端 generate
 6. 写回前 `Read references/goal-diverge.md` 与 `references/artifact-kinds.md`
 7. `goal-diverge-finish`（`run_id` + `candidates`）
 8. 提示用户回 Web「候选菜单」勾选；采纳后的任务再用 A0 按族回写
@@ -152,6 +153,9 @@ Web「复制执行提示词」只会给出极短文本，形态固定为 **空�
 | `topic-list` / `topic-create` | 对应脚本 | 选题库（`topic` 任务回写） |
 | `photo-create` | `scripts/photo-create.py` | 上传/入库项目图库 |
 | `template-upsert` | `scripts/template-upsert.py` | 结构化建模板或链接导入 |
+| `speech-create` | `scripts/speech-create.py` | 话术入库（`speech`：title + copies） |
+| `speech-group-create` | `scripts/speech-group-create.py` | 创建话术分组 |
+| `piece-group-create` | `scripts/piece-group-create.py` | 创建文案分组 |
 | `content-task-list` | `scripts/content-task-list.py` | 项目任务列表 |
 | `content-task-due` | `scripts/content-task-due.py` | **到期待执行任务**（仅无 taskId 时用） |
 | `content-task-claim` | `scripts/content-task-claim.py` | **领取执行权 + batch_tag** |
@@ -225,7 +229,7 @@ Web「复制执行提示词」只会给出极短文本，形态固定为 **空�
 1. 先 `file-list` / `content-task-get` 取事实，**不要虚构**价格、资质、案例。
 2. 按启用类型的 `piece_count` 产出（新任务通常只有一种类型）；有选题则轮转均分。
 3. **强制**：写每篇前打开 [`references/content-formats.md`](references/content-formats.md)，按该任务 `content_type` 小节写；格式以该文件为准（含共同规则）。
-4. `result` 必须是可直接复制到目标渠道的成品。例如 `private_chat` 是 3～5 行短消息（**单换行、禁止空行**），禁止 `【场景】` / `话术 A` / `转化要点` / 对方回复示例。
+4. `piece_*` 的 `result` 必须是可直接复制到目标渠道的成品。`speech` 用 `title` + `copies[]`（每条 copy 可直接发出）；私聊场景每条 copy 为 3～5 行短消息（**单换行、禁止空行**），禁止 `【场景】` / `话术 A` / `转化要点`。
 5. 同一批次所有 `piece-create` 使用相同 `batch_tag`。
 6. 写完后必须 `content-task-finish`，否则 Web 一直显示执行中。
 

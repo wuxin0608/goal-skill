@@ -6,7 +6,7 @@ Cursor Agent Skill：内容项目运营（资料 / **Agent 本地按产物 kind 
 
 1. Web 派单；本地 Agent 按 `taskId=` / 今日 due 领取任务
 2. `content-task-claim` → **按 `output_type` 族回写** → `content-task-finish`
-3. 扁平 kind：`piece_*` / `file_*` / `topic` / `photo` / `template` / `subgoal`（见 `references/artifact-kinds.md`）
+3. 扁平 kind：`piece_*` / `file_*` / `topic` / `photo` / `template` / `speech` / `subgoal`（见 `references/artifact-kinds.md`）
 4. Goal 发散：candidates 使用扁平 kind → `goal-diverge-finish`
 5. **禁止**使用 `content-task-confirm`（会触发服务端 LLM）；**禁止**根据赞藏改目标/选题
 

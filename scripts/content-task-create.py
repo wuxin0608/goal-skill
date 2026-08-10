@@ -13,7 +13,7 @@ DEFAULT_KIND = "piece_xiaohongshu"
 
 
 def _default_piece_count(type_id: str) -> int:
-    return 10 if type_id == "private_chat" else 4
+    return 4
 
 
 def _piece_content_type(kind: str) -> str:
@@ -56,6 +56,8 @@ def run(params: Dict[str, Any]) -> Dict[str, Any]:
 
     quantity = int(p.get("quantity") or 0)
     ct = _piece_content_type(kind)
+    if quantity <= 0 and kind == "speech":
+        quantity = 5
     if quantity <= 0 and ct:
         quantity = _default_piece_count(ct)
     if quantity <= 0:
